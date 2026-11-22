@@ -47,6 +47,18 @@ canvas {
   padding: 16px;
   border-radius: 12px;
   background: rgba(8, 11, 20, 0.78);
+  overflow-y: auto;
+  justify-content: safe center;
+}
+
+/* 휴대폰처럼 작은 화면: 메뉴를 화면 전체에 띄워 잘리지 않게 */
+@media (max-width: 700px), (max-height: 560px) {
+  .overlay {
+    position: fixed;
+    border-radius: 0;
+    background: rgba(8, 11, 20, 0.94);
+    z-index: 10;
+  }
 }
 
 .overlay.hidden { display: none; }

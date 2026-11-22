@@ -735,7 +735,7 @@
       const px = pointer.x - player.x, py = pointer.y - player.y;
       const d = Math.hypot(px, py);
       if (d > 1) {
-        const m = Math.min(player.speed * dt, d);
+        const m = Math.min(player.speed * (touchStart ? 1.5 : 1) * dt, d);
         player.x += (px / d) * m;
         player.y += (py / d) * m;
       }
@@ -1329,12 +1329,31 @@
   window.addEventListener('keyup', e => keys.delete(e.code));
   window.addEventListener('blur', () => { keys.clear(); pointer.active = false; pause(); });
 
-  function toCanvas(e) {
+  // 마우스: 누른 곳으로 이동. 터치: 손가락을 움직인 만큼 상대 이동(손가락이 캐릭터를 가리지 않음)
+  let touchStart = null;
+  function canvasPos(e) {
     const rect = canvas.getBoundingClientRect();
-    pointer.x = (e.clientX - rect.left) * (W / rect.width);
-    pointer.y = (e.clientY - rect.top) * (H / rect.height);
+    return { x: (e.clientX - rect.left) * (W / rect.width), y: (e.clientY - rect.top) * (H / rect.height) };
   }
-  canvas.addEventListener('pointerdown', e => { pointer.active = true; toCanvas(e); canvas.setPointerCapture(e.pointerId); });
+  function toCanvas(e) {
+    const p = canvasPos(e);
+    if (touchStart) {
+      pointer.x = clamp(touchStart.px + (p.x - touchStart.x) * 1.3, 0, W);
+      pointer.y = clamp(touchStart.py + (p.y - touchStart.y) * 1.3, 0, H);
+    } else {
+      pointer.x = p.x;
+      pointer.y = p.y;
+    }
+  }
+  canvas.addEventListener('pointerdown', e => {
+    pointer.active = true;
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      const p = canvasPos(e);
+      touchStart = { x: p.x, y: p.y, px: player.x, py: player.y };
+    } else touchStart = null;
+    toCanvas(e);
+    canvas.setPointerCapture(e.pointerId);
+  });
   canvas.addEventListener('pointermove', e => { if (pointer.active) toCanvas(e); });
   canvas.addEventListener('pointerup', () => { pointer.active = false; });
   canvas.addEventListener('pointercancel', () => { pointer.active = false; });
