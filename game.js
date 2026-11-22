@@ -3,13 +3,17 @@
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  const W = canvas.width;
-  const H = canvas.height;
+  // 게임 세계는 높이 600 고정, 너비는 화면 비율에 맞춰 800~1320 (가로가 긴 휴대폰에서 화면을 꽉 채움)
+  let W = 800;
+  const H = 600;
+  let RES = 1; // 화면 해상도 배율 (휴대폰에서 선명하게)
   const TAU = Math.PI * 2;
 
   const overlay = document.getElementById('overlay');
   const panel = document.getElementById('panel');
-  const soundBtn = document.getElementById('sound-btn');
+  const pauseBtn = document.getElementById('pause-btn');
+  const isTouch = window.matchMedia('(pointer: coarse)').matches;
+  const isStandalone = () => window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone === true;
 
   // ---- 저장소 ----
   const store = {
@@ -747,9 +751,10 @@
   // ==================================================================
   // 배경
   // ==================================================================
-  const STARS = Array.from({ length: 140 }, () => ({ x: Math.random() * W, y: Math.random() * H, z: Math.random() }));
-  const EMBERS = Array.from({ length: 90 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: rand(20, 70), p: rand(0, TAU) }));
-  const DROPS = Array.from({ length: 110 }, () => ({ x: Math.random() * (W + 200), y: Math.random() * H, s: rand(500, 800) }));
+  const MAXW = 1320;
+  const STARS = Array.from({ length: 200 }, () => ({ x: Math.random() * MAXW, y: Math.random() * H, z: Math.random() }));
+  const EMBERS = Array.from({ length: 130 }, () => ({ x: Math.random() * MAXW, y: Math.random() * H, s: rand(20, 70), p: rand(0, TAU) }));
+  const DROPS = Array.from({ length: 160 }, () => ({ x: Math.random() * (MAXW + 200), y: Math.random() * H, s: rand(500, 800) }));
   let lightning = 0;
 
   function gradientBg(c1, c2, vertical = true) {
@@ -1052,18 +1057,18 @@
     ctx.save();
     ctx.textAlign = 'left';
     ctx.fillStyle = c.accent;
-    ctx.font = 'bold 16px "Segoe UI", "Malgun Gothic", sans-serif';
-    ctx.fillText(`STAGE ${stageIdx + 1} · ${stage.name}`, 16, 28);
+    ctx.font = 'bold 19px "Segoe UI", "Malgun Gothic", sans-serif';
+    ctx.fillText(`STAGE ${stageIdx + 1} · ${stage.name}`, 18, 32);
     ctx.fillStyle = '#e8ecf5';
-    ctx.font = 'bold 20px "Segoe UI", sans-serif';
-    ctx.fillText(Math.floor(score).toLocaleString(), 16, 54);
+    ctx.font = 'bold 24px "Segoe UI", sans-serif';
+    ctx.fillText(Math.floor(score).toLocaleString(), 18, 62);
 
     for (let k = 0; k < 5; k++) {
-      drawHeart(W - 24 - k * 26, 16, 18, k < lives ? '#f43f5e' : 'rgba(148,163,184,0.25)');
+      drawHeart(W - 28 - k * 32, 16, 22, k < lives ? '#f43f5e' : 'rgba(148,163,184,0.25)');
     }
 
     // 진행 바 / 보스 체력
-    const bw = 300, bx = W / 2 - bw / 2, by = 18;
+    const bw = Math.min(380, W * 0.34), bx = W / 2 - bw / 2, by = 18;
     if (phase === 'wave' || phase === 'intro') {
       const p = phase === 'intro' ? 0 : clamp(phaseT / stage.waveTime, 0, 1);
       ctx.fillStyle = 'rgba(148,163,184,0.2)';
@@ -1071,9 +1076,9 @@
       ctx.fillStyle = c.accent;
       ctx.fillRect(bx, by, bw * p, 8);
       ctx.textAlign = 'center';
-      ctx.font = '12px "Segoe UI", "Malgun Gothic", sans-serif';
+      ctx.font = '15px "Segoe UI", "Malgun Gothic", sans-serif';
       ctx.fillStyle = '#94a3b8';
-      ctx.fillText('보스 출현까지', W / 2, by + 24);
+      ctx.fillText('보스 출현까지', W / 2, by + 27);
     } else if (phase === 'boss' && boss) {
       ctx.fillStyle = 'rgba(148,163,184,0.2)';
       ctx.fillRect(bx, by, bw, 10);
@@ -1085,14 +1090,15 @@
       ctx.strokeStyle = 'rgba(255,255,255,0.5)';
       ctx.strokeRect(bx, by, bw, 10);
       ctx.textAlign = 'center';
-      ctx.font = 'bold 13px "Segoe UI", "Malgun Gothic", sans-serif';
+      ctx.font = 'bold 16px "Segoe UI", "Malgun Gothic", sans-serif';
       ctx.fillStyle = '#e8ecf5';
-      ctx.fillText(`BOSS · ${boss.def.name}  ${boss.hp} / ${boss.maxHp}`, W / 2, by + 27);
+      ctx.fillText(`BOSS · ${boss.def.name}  ${boss.hp} / ${boss.maxHp}`, W / 2, by + 31);
     }
     ctx.restore();
   }
 
   function draw(dt) {
+    ctx.setTransform(RES, 0, 0, RES, 0, 0);
     ctx.save();
     if (shake > 0) ctx.translate(rand(-1, 1) * shake * 14, rand(-1, 1) * shake * 14);
 
@@ -1231,7 +1237,7 @@
         ctx.textAlign = 'center';
         ctx.font = 'bold 16px "Segoe UI", "Malgun Gothic", sans-serif';
         ctx.fillStyle = '#fde047';
-        ctx.fillText('★ 아이템을 먹으면 보스를 공격합니다! (⚡3연타 · 💣폭탄 · 🛡방패 · ⏳감속 · ❤생명)', W / 2, H - 24);
+        ctx.fillText('★ 아이템을 먹으면 보스를 공격합니다! (⚡3연타 · 💣폭탄 · 🛡방패 · ⏳감속 · ❤생명)', W / 2, H - 22);
         ctx.restore();
       }
     }
@@ -1244,6 +1250,7 @@
     lastTime = t;
     update(state === 'paused' ? 0 : dt);
     draw(dt);
+    pauseBtn.classList.toggle('hidden', state !== 'playing');
     requestAnimationFrame(frame);
   }
 
@@ -1276,7 +1283,35 @@
         <span>스테이지 선택</span>
         <div class="stage-grid">${btns}</div>
       </div>
-      <p class="help">이동: 방향키 / WASD / 드래그 · 일시정지: P · 소리: M<br>보스전에서는 아이템(★⚡💣🛡⏳❤)을 먹어 보스를 공격하세요.</p>`);
+      ${menuRow()}
+      <p class="help">${isTouch
+        ? '화면 아무 곳이나 손가락으로 드래그해 이동 · ⏸ 버튼으로 일시정지'
+        : '이동: 방향키 / WASD / 마우스 · 일시정지: P · 소리: M'}<br>보스전에서는 아이템(★⚡💣🛡⏳❤)을 먹어 보스를 공격하세요.</p>`);
+  }
+
+  // ---- 메뉴 공통 버튼 (소리 / 앱 설치 / 전체화면) ----
+  function soundLabel() { return Sound.isMuted() ? '🔇 소리 꺼짐' : '🔊 소리 켜짐'; }
+  function menuRow() {
+    const items = [`<button class="tool sound-btn" data-action="sound">${soundLabel()}</button>`];
+    const canInstall = window.PWA && window.PWA.available;
+    items.push(`<button class="tool install-btn ${canInstall ? '' : 'hidden'}" data-action="install">📲 앱 설치</button>`);
+    if (document.fullscreenEnabled && !isStandalone()) items.push(`<button class="tool" data-action="fullscreen">⛶ 전체화면</button>`);
+    return `<div class="btn-row menu-row">${items.join('')}</div>`;
+  }
+
+  function lockLandscape() {
+    try {
+      if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+    } catch (e) { /* 지원하지 않는 브라우저 */ }
+  }
+  function enterFullscreen() {
+    const el = document.documentElement;
+    if (document.fullscreenElement || !el.requestFullscreen) { lockLandscape(); return; }
+    el.requestFullscreen({ navigationUI: 'hide' }).then(lockLandscape).catch(() => {});
+  }
+  function toggleFullscreen() {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else enterFullscreen();
   }
 
   function pause() {
@@ -1290,7 +1325,8 @@
       <div class="btn-row">
         <button class="primary" data-action="resume">계속하기</button>
         <button data-action="title">타이틀</button>
-      </div>`);
+      </div>
+      ${menuRow()}`);
   }
 
   function resume() {
@@ -1306,15 +1342,22 @@
     if (!btn || btn.disabled) return;
     btn.blur();
     const a = btn.dataset.action;
-    if (a === 'start') startGame(Number(btn.dataset.stage) || 1);
+    if (a === 'start') {
+      // 휴대폰에서는 게임 시작 시 전체화면 + 가로 고정
+      if (isTouch) { if (isStandalone()) lockLandscape(); else enterFullscreen(); }
+      startGame(Number(btn.dataset.stage) || 1);
+    }
     else if (a === 'resume') resume();
     else if (a === 'title') showTitle();
+    else if (a === 'sound') toggleSound();
+    else if (a === 'install' && window.PWA) window.PWA.install();
+    else if (a === 'fullscreen') toggleFullscreen();
   });
 
-  function updateSoundBtn() { soundBtn.textContent = Sound.isMuted() ? '🔇 소리 꺼짐' : '🔊 소리 켜짐'; }
-  function toggleSound() { Sound.toggleMute(); updateSoundBtn(); soundBtn.blur(); }
-  soundBtn.addEventListener('click', toggleSound);
-  updateSoundBtn();
+  function toggleSound() {
+    Sound.toggleMute();
+    document.querySelectorAll('.sound-btn').forEach(b => { b.textContent = soundLabel(); });
+  }
 
   window.addEventListener('keydown', e => {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
@@ -1327,7 +1370,15 @@
     }
   });
   window.addEventListener('keyup', e => keys.delete(e.code));
-  window.addEventListener('blur', () => { keys.clear(); pointer.active = false; pause(); });
+  function autoPause() {
+    keys.clear();
+    pointer.active = false;
+    if (window.DodgeDebug && window.DodgeDebug.noAutoPause) return;
+    pause();
+  }
+  window.addEventListener('blur', autoPause);
+  // 휴대폰에서 다른 앱으로 전환하거나 화면이 꺼지면 자동 일시정지
+  document.addEventListener('visibilitychange', () => { if (document.hidden) autoPause(); });
 
   // 마우스: 누른 곳으로 이동. 터치: 손가락을 움직인 만큼 상대 이동(손가락이 캐릭터를 가리지 않음)
   let touchStart = null;
@@ -1357,10 +1408,39 @@
   canvas.addEventListener('pointermove', e => { if (pointer.active) toCanvas(e); });
   canvas.addEventListener('pointerup', () => { pointer.active = false; });
   canvas.addEventListener('pointercancel', () => { pointer.active = false; });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  // 화면 일시정지 버튼 (터치용)
+  pauseBtn.addEventListener('click', () => { pauseBtn.blur(); pause(); });
+
+  // ---- 화면 크기 맞추기: 화면 비율에 맞춰 게임 세계 너비와 해상도를 조절 ----
+  function fitCanvas() {
+    const stageEl = canvas.parentElement;
+    const cw = stageEl.clientWidth, ch = stageEl.clientHeight;
+    if (!cw || !ch) return;
+    const aspect = clamp(cw / ch, 4 / 3, MAXW / H);
+    W = Math.round(H * aspect);
+    let cssW, cssH;
+    if (cw / ch > aspect) { cssH = ch; cssW = ch * aspect; } else { cssW = cw; cssH = cw / aspect; }
+    canvas.style.width = `${Math.floor(cssW)}px`;
+    canvas.style.height = `${Math.floor(cssH)}px`;
+    const dpr = window.devicePixelRatio || 1;
+    RES = clamp((cssH * dpr) / H, 1, 2);
+    canvas.width = Math.round(W * RES);
+    canvas.height = Math.round(H * RES);
+    if (player) player.x = clamp(player.x, player.r, W - player.r);
+    // 휴대폰을 세로로 돌리면 자동 일시정지 (가로 안내 화면이 뜸)
+    if (isTouch && window.innerHeight > window.innerWidth) autoPause();
+  }
+  window.addEventListener('resize', fitCanvas);
+  window.addEventListener('orientationchange', () => setTimeout(fitCanvas, 200));
+  document.addEventListener('fullscreenchange', () => setTimeout(fitCanvas, 100));
+  fitCanvas();
 
   // 테스트/디버그용: 주소 뒤에 ?debug 를 붙였을 때만 켜짐 (예: http://localhost:8765/?debug)
   if (new URLSearchParams(location.search).has('debug')) window.DodgeDebug = {
     god: false,
+    noAutoPause: false,
     stage(n) { startGame(n); },
     skipIntro() { if (phase === 'intro') phaseT = 99; },
     hitBoss(n = 1) { for (let k = 0; k < n && boss; k++) damageBoss(); },

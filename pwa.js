@@ -1,4 +1,4 @@
-// 웹앱(PWA) 설치 지원: 서비스 워커 등록 + "앱으로 설치" 버튼
+// 웹앱(PWA) 설치 지원: 서비스 워커 등록 + 메뉴의 "앱 설치" 버튼
 (() => {
   'use strict';
 
@@ -9,25 +9,31 @@
     });
   }
 
-  const installBtn = document.getElementById('install-btn');
   let deferred = null;
+  const showButtons = on => document.querySelectorAll('.install-btn').forEach(b => b.classList.toggle('hidden', !on));
+
+  window.PWA = {
+    available: false,
+    async install() {
+      if (!deferred) return;
+      deferred.prompt();
+      await deferred.userChoice;
+      deferred = null;
+      window.PWA.available = false;
+      showButtons(false);
+    },
+  };
 
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     deferred = e;
-    installBtn.classList.remove('hidden');
-  });
-
-  installBtn.addEventListener('click', async () => {
-    if (!deferred) return;
-    deferred.prompt();
-    await deferred.userChoice;
-    deferred = null;
-    installBtn.classList.add('hidden');
+    window.PWA.available = true;
+    showButtons(true);
   });
 
   window.addEventListener('appinstalled', () => {
     deferred = null;
-    installBtn.classList.add('hidden');
+    window.PWA.available = false;
+    showButtons(false);
   });
 })();
