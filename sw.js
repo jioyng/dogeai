@@ -22,7 +22,8 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      // 같은 사이트(jioyng.github.io)의 다른 게임 캐시는 건드리지 않고 이 게임의 이전 캐시만 정리
+      .then(keys => Promise.all(keys.filter(k => k.startsWith('dodge-v') && k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
